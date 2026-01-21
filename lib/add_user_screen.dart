@@ -16,7 +16,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String _selectedRole = 'Student';
-  bool _isLoading = false;
+  bool _isLoading     = false;
 
   final List<String> _roles = ['Student', 'Faculty', 'Parent', 'Admin'];
 
