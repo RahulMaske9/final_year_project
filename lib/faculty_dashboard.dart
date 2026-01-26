@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:first_app/faculty_enter_marks_screen.dart';
-import 'package:first_app/faculty_select_attendance_year_screen.dart';
 import 'package:first_app/faculty_select_year_screen.dart';
+import 'package:first_app/mark_attendance_screen.dart';
 import 'package:first_app/login_screen.dart';
+import 'package:first_app/manage_timetable_page.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -22,8 +23,9 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     await GoogleSignIn().signOut();
     await FirebaseAuth.instance.signOut();
     if (mounted) {
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
       );
     }
   }
@@ -57,21 +59,22 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        // Fetch Faculty Profile for Welcome Card
         stream: FirebaseFirestore.instance.collection('users').doc(_currentUserId).snapshots(),
         builder: (context, snapshot) {
-           String facultyName = 'Professor';
-           if (snapshot.hasData && snapshot.data!.exists) {
-             final data = snapshot.data!.data() as Map<String, dynamic>;
-             facultyName = data['displayName'] ?? data['firstName'] ?? 'Professor';
-           }
+          String facultyName = 'Professor';
+          if (snapshot.hasData && snapshot.data!.exists) {
+            final data = snapshot.data!.data() as Map<String, dynamic>;
+            facultyName = data['displayName'] ?? data['firstName'] ?? 'Professor';
+          }
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
                 _buildWelcomeCard(facultyName),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+                _buildAttendancePromotion(),
+                const SizedBox(height: 24),
                 _buildDashboardSection(
                   title: 'Class Management',
                   tiles: [
@@ -85,11 +88,11 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                       label: 'Take Attendance',
                       icon: Icons.how_to_reg_outlined,
                       color: Colors.green.shade700,
-                      onTap: () => _navigateTo(const FacultySelectAttendanceYearScreen()),
+                      onTap: () => _navigateTo(const MarkAttendanceScreen()),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 _buildDashboardSection(
                   title: 'Academics & Exams',
                   tiles: [
@@ -109,7 +112,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                       label: 'Timetable',
                       icon: Icons.calendar_today_outlined,
                       color: Colors.purple.shade700,
-                      onTap: () => _showFeatureNotImplemented('Timetable'),
+                      onTap: () => _navigateTo(const ManageTimetablePage()),
                     ),
                     _buildDashboardTile(
                       label: 'Course Material',
@@ -119,7 +122,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 _buildDashboardSection(
                   title: 'Communication',
                   tiles: [
@@ -196,6 +199,72 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAttendancePromotion() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF3F51B5).withOpacity(0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFC107).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Icon(Icons.fact_check_outlined, color: Color(0xFFFFC107), size: 30),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Daily Attendance',
+                    style: GoogleFonts.lato(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    'Mark presence for your students',
+                    style: GoogleFonts.lato(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => _navigateTo(const MarkAttendanceScreen()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3F51B5),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              child: const Text('Go'),
+            ),
+          ],
+        ),
       ),
     );
   }

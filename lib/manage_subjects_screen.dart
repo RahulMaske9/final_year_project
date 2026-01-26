@@ -1,20 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-// Model for subject data
-class Subject {
-  String id;
-  String name;
-  String subjectCode;
-  String department;
-
-  Subject({
-    required this.id,
-    required this.name,
-    required this.subjectCode,
-    required this.department,
-  });
-}
 
 class ManageSubjectsScreen extends StatefulWidget {
   const ManageSubjectsScreen({super.key});
@@ -24,302 +10,580 @@ class ManageSubjectsScreen extends StatefulWidget {
 }
 
 class _ManageSubjectsScreenState extends State<ManageSubjectsScreen> {
-  // Dummy departments
-  final List<String> _departments = ['CSE', 'ECE', 'MECH', 'CIVIL', 'IT', 'AI-DS'];
-
-  // Dummy data
-  final List<Subject> _allSubjects = [
-    Subject(id: 'S01', name: 'Data Structures', subjectCode: 'CS101', department: 'CSE'),
-    Subject(id: 'S02', name: 'Thermodynamics', subjectCode: 'ME101', department: 'MECH'),
-    Subject(id: 'S03', name: 'Digital Electronics', subjectCode: 'EC101', department: 'ECE'),
-    Subject(id: 'S04', name: 'Communication English', subjectCode: 'ENG101', department: 'CSE'),
+  String? _selectedDepartment;
+  final List<String> _departments = [
+    'Computer Science',
+    'IT',
+    'Mechanical',
+    'Civil',
+    'Electrical',
+    'Electronics'
   ];
 
-  late List<Subject> _filteredSubjects;
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _filteredSubjects = List.from(_allSubjects);
-    _searchController.addListener(_filterSubjects);
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _filterSubjects() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredSubjects = _allSubjects.where((s) {
-        return s.name.toLowerCase().contains(query) ||
-            s.subjectCode.toLowerCase().contains(query) ||
-            s.department.toLowerCase().contains(query);
-      }).toList();
-    });
-  }
-
-  void _addSubject(Subject subject) {
-    setState(() {
-      _allSubjects.add(subject);
-      _filterSubjects();
-    });
-  }
-
-  void _updateSubject(Subject updatedSubject) {
-    setState(() {
-      final index = _allSubjects.indexWhere((s) => s.id == updatedSubject.id);
-      if (index != -1) {
-        _allSubjects[index] = updatedSubject;
-        _filterSubjects();
-      }
-    });
-  }
-
-  void _deleteSubject(String id) {
-    setState(() {
-      _allSubjects.removeWhere((s) => s.id == id);
-      _filterSubjects();
-    });
-  }
+  final Color _primaryColor = const Color(0xFF3F51B5);
+  final Color _secondaryColor = const Color(0xFFFFC107);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: Text('Manage Subjects', style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF3F51B5),
-        foregroundColor: Colors.white,
+        title: Text('Manage Subjects',
+            style: GoogleFonts.lato(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: _primaryColor,
         elevation: 4,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
         children: [
-          _buildSearchBar(),
+          _buildDepartmentDropdown(),
           Expanded(
-            child: _filteredSubjects.isEmpty ? _buildEmptyState() : _buildSubjectList(),
+            child: _selectedDepartment == null
+                ? _buildEmptySelection()
+                : _buildSubjectsStream(),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showSubjectFormDialog(),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Subject'),
-        backgroundColor: const Color(0xFF3F51B5),
-        foregroundColor: Colors.white,
-      ),
+      floatingActionButton: _selectedDepartment != null
+          ? FloatingActionButton.extended(
+              onPressed: () => _showAddSubjectDialog(),
+              backgroundColor: _primaryColor,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: Text('Add Subject', style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
+            )
+          : null,
     );
   }
 
-  Widget _buildSearchBar() {
-    return Padding(
+  Widget _buildDepartmentDropdown() {
+    return Container(
       padding: const EdgeInsets.all(16.0),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Search by name, code or department...',
-          prefixIcon: const Icon(Icons.search),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30.0),
-            borderSide: BorderSide.none,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        ],
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _selectedDepartment,
+        decoration: InputDecoration(
+          labelText: 'Select Department',
+          labelStyle: GoogleFonts.lato(color: _primaryColor, fontWeight: FontWeight.bold),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: _primaryColor, width: 2),
+          ),
+          prefixIcon: Icon(Icons.business, color: _primaryColor),
+          filled: true,
+          fillColor: Colors.white,
         ),
+        items: _departments.map((String dept) {
+          return DropdownMenuItem<String>(
+            value: dept,
+            child: Text(dept, style: GoogleFonts.lato()),
+          );
+        }).toList(),
+        onChanged: (String? newValue) {
+          setState(() {
+            _selectedDepartment = newValue;
+          });
+        },
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptySelection() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 80, color: Colors.grey.shade400),
+          Icon(Icons.school_outlined, size: 100, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text(
-            'No subjects found',
-            style: GoogleFonts.lato(fontSize: 18, color: Colors.grey.shade600),
+            'Please select a department to view subjects',
+            style: GoogleFonts.lato(
+              fontSize: 18,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSubjectList() {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 80),
-      itemCount: _filteredSubjects.length,
-      itemBuilder: (context, index) {
-        final subject = _filteredSubjects[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            leading: CircleAvatar(
-              backgroundColor: const Color(0xFF3F51B5).withOpacity(0.1),
-              foregroundColor: const Color(0xFF3F51B5),
-              child: const Icon(Icons.book_outlined),
-            ),
-            title: Text(subject.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildSubjectsStream() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('departments')
+          .doc(_selectedDepartment)
+          .collection('subjects')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('Code: ${subject.subjectCode}'),
-                Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade200),
-                  ),
-                  child: Text(
-                    'Dept: ${subject.department}',
-                    style: TextStyle(color: Colors.green.shade700, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
+                Icon(Icons.book_outlined, size: 80, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text('No subjects found for this department',
+                    style: GoogleFonts.lato(fontSize: 16, color: Colors.grey[600])),
               ],
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blueGrey),
-                  onPressed: () => _showSubjectFormDialog(subject: subject),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.redAccent),
-                  onPressed: () => _showDeleteConfirmationDialog(subject),
-                ),
-              ],
-            ),
-          ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            var subjectDoc = snapshot.data!.docs[index];
+            var subjectData = subjectDoc.data() as Map<String, dynamic>;
+            return _buildSubjectCard(subjectDoc.id, subjectData);
+          },
         );
       },
     );
   }
 
-  void _showDeleteConfirmationDialog(Subject subject) {
+  Widget _buildSubjectCard(String subjectId, Map<String, dynamic> data) {
+    String facultyName = data['facultyName'] ?? 'Not Allotted';
+    
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data['subjectName'] ?? 'No Name',
+                          style: GoogleFonts.lato(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: _primaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _secondaryColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Code: ${data['subjectCode'] ?? 'N/A'}',
+                            style: GoogleFonts.lato(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange[900],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    onPressed: () => _deleteSubject(subjectId, data['subjectName'] ?? 'this subject'),
+                  ),
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Divider(height: 1, color: Color(0xFFEEEEEE)),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Allotted Faculty',
+                          style: GoogleFonts.lato(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[500],
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.person_outline,
+                              size: 16,
+                              color: facultyName == 'Not Allotted' ? Colors.orange : Colors.green,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                facultyName,
+                                style: GoogleFonts.lato(
+                                  fontSize: 15,
+                                  color: facultyName == 'Not Allotted' ? Colors.orange[800] : Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _showFacultySelectionSheet(subjectId),
+                    icon: const Icon(Icons.assignment_ind_outlined, size: 18),
+                    label: const Text('Assign'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFacultySelectionSheet(String subjectId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _FacultySearchSheet(
+          primaryColor: _primaryColor,
+          onFacultySelected: (facultyId, facultyName) {
+            _assignFaculty(subjectId, facultyId, facultyName);
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _assignFaculty(String subjectId, String facultyId, String facultyName) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('departments')
+          .doc(_selectedDepartment)
+          .collection('subjects')
+          .doc(subjectId)
+          .update({
+        'facultyId': facultyId,
+        'facultyName': facultyName,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Subject assigned to $facultyName'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showAddSubjectDialog() {
+    final nameController = TextEditingController();
+    final codeController = TextEditingController();
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content: Text('Are you sure you want to delete ${subject.name}?'),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Add New Subject', 
+          style: GoogleFonts.lato(fontWeight: FontWeight.bold, color: _primaryColor)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Subject Name',
+                labelStyle: GoogleFonts.lato(),
+                prefixIcon: const Icon(Icons.book),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: codeController,
+              decoration: InputDecoration(
+                labelText: 'Subject Code',
+                labelStyle: GoogleFonts.lato(),
+                prefixIcon: const Icon(Icons.code),
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.lato(color: Colors.grey[600])),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Delete'),
-            onPressed: () {
-              _deleteSubject(subject.id);
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${subject.name} deleted successfully.'), backgroundColor: Colors.red),
-              );
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.trim().isNotEmpty && codeController.text.trim().isNotEmpty) {
+                await _addSubject(nameController.text.trim(), codeController.text.trim());
+                if (context.mounted) Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter both name and code')),
+                );
+              }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('Add', style: GoogleFonts.lato(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
-  void _showSubjectFormDialog({Subject? subject}) {
-    final isEditing = subject != null;
-    final nameController = TextEditingController(text: subject?.name ?? '');
-    final codeController = TextEditingController(text: subject?.subjectCode ?? '');
-    String selectedDept = subject?.department ?? _departments[0];
+  Future<void> _addSubject(String name, String code) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('departments')
+          .doc(_selectedDepartment)
+          .collection('subjects')
+          .add({
+        'subjectName': name,
+        'subjectCode': code,
+        'facultyId': null,
+        'facultyName': 'Not Allotted',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Subject added successfully'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
-    showDialog(
+  Future<void> _deleteSubject(String subjectId, String name) async {
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Text(isEditing ? 'Edit Subject' : 'Add New Subject'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Subject Name', hintText: 'e.g. Data Structures'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: codeController,
-                    decoration: const InputDecoration(labelText: 'Subject Code', hintText: 'e.g. CS101'),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text('Select Department', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: selectedDept,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                    items: _departments.map((dept) {
-                      return DropdownMenuItem(value: dept, child: Text(dept));
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() => selectedDept = value);
-                      }
-                    },
-                  ),
-                ],
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: Text('Are you sure you want to delete "$name"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Yes', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseFirestore.instance
+          .collection('departments')
+          .doc(_selectedDepartment)
+          .collection('subjects')
+          .doc(subjectId)
+          .delete();
+    }
+  }
+}
+
+class _FacultySearchSheet extends StatefulWidget {
+  final Color primaryColor;
+  final Function(String id, String name) onFacultySelected;
+
+  const _FacultySearchSheet({
+    required this.primaryColor,
+    required this.onFacultySelected,
+  });
+
+  @override
+  State<_FacultySearchSheet> createState() => _FacultySearchSheetState();
+}
+
+class _FacultySearchSheetState extends State<_FacultySearchSheet> {
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            height: 4,
+            width: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                Text(
+                  'Assign Faculty',
+                  style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
+              decoration: InputDecoration(
+                hintText: 'Search by faculty name...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear), 
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    ) 
+                  : null,
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
-            actions: [
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () => Navigator.of(ctx).pop(),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3F51B5)),
-                child: Text(isEditing ? 'Update' : 'Add'),
-                onPressed: () {
-                  if (nameController.text.isEmpty || codeController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please fill all fields')),
-                    );
-                    return;
-                  }
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .where('role', isEqualTo: 'Faculty')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  final newSubject = Subject(
-                    id: subject?.id ?? DateTime.now().toIso8601String(),
-                    name: nameController.text,
-                    subjectCode: codeController.text,
-                    department: selectedDept,
-                  );
+                var facultyDocs = snapshot.data!.docs.where((doc) {
+                  String name = (doc['name'] ?? '').toString().toLowerCase();
+                  return name.contains(_searchQuery);
+                }).toList();
 
-                  if (isEditing) {
-                    _updateSubject(newSubject);
-                  } else {
-                    _addSubject(newSubject);
-                  }
-
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Subject ${isEditing ? 'updated' : 'added'} successfully.'),
-                      backgroundColor: Colors.green,
+                if (facultyDocs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person_search, size: 60, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        Text('No faculty members found',
+                            style: GoogleFonts.lato(color: Colors.grey[600])),
+                      ],
                     ),
                   );
-                },
-              ),
-            ],
-          );
-        },
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: facultyDocs.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    var doc = facultyDocs[index];
+                    String name = doc['name'] ?? 'Unknown';
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      leading: CircleAvatar(
+                        backgroundColor: widget.primaryColor.withOpacity(0.1),
+                        child: Icon(Icons.person, color: widget.primaryColor),
+                      ),
+                      title: Text(name, style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
+                      subtitle: Text(doc['email'] ?? '', style: GoogleFonts.lato(fontSize: 13)),
+                      trailing: const Icon(Icons.chevron_right, size: 18),
+                      onTap: () {
+                        widget.onFacultySelected(doc.id, name);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

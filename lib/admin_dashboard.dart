@@ -1,115 +1,350 @@
-
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:first_app/login_screen.dart';
+import 'package:first_app/manage_courses_screen.dart';
+import 'package:first_app/manage_events_screen.dart';
+import 'package:first_app/manage_faculty_screen.dart';
+import 'package:first_app/manage_student_screen.dart';
+import 'package:first_app/manage_timetable_screen.dart';
+import 'package:first_app/manage_subjects_screen.dart';
+import 'package:first_app/department_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:first_app/branch_selection_screen.dart';
-import 'package:first_app/manage_faculty_screen.dart';
-import 'package:first_app/post_notice_screen.dart';
-import 'package:first_app/department_selection_page.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
-class AdminDashboard extends StatelessWidget {
+class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
+
+  @override
+  State<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<AdminDashboard> with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutQuart,
+    ));
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await GoogleSignIn().signOut();
+      await FirebaseAuth.instance.signOut();
+      if (!context.mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (Route<dynamic> route) => false,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Admin Dashboard', style: GoogleFonts.lato()),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: Text('Admin Portal', style: GoogleFonts.lato(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF2E7D32), // Green 800
         foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () => _logout(context),
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+          ),
+        ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.grey.shade100, Colors.green.shade50], // Changed from blue.shade50
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                // Welcome & Metrics Card
+                _buildWelcomeCard(),
+                const SizedBox(height: 24),
+
+                // Section 1: User Management
+                _buildSectionTitle('User Management'),
+                _buildGroupedCard([
+                  _buildListTile(
+                    title: 'Manage Students',
+                    icon: Icons.people_alt_outlined,
+                    color: Colors.green.shade800, // Changed from blue.shade800
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ManageStudentScreen()));
+                    },
+                  ),
+                  _buildListTile(
+                    title: 'Manage Faculty',
+                    icon: Icons.school_outlined,
+                    color: Colors.orange.shade800,
+                    onTap: () {
+                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ManageFacultyScreen()));
+                    },
+                    isLast: true,
+                  ),
+                ]),
+
+                const SizedBox(height: 24),
+
+                // Section 2: Academics & Timetable
+                _buildSectionTitle('Academics & Timetable'),
+                _buildGroupedCard([
+                  _buildListTile(
+                    title: 'Manage Courses',
+                    icon: Icons.book_outlined,
+                    color: Colors.teal.shade700, // Greenish teal
+                    onTap: () {
+                       Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ManageCoursesScreen()));
+                    },
+                  ),
+                  _buildListTile(
+                    title: 'Select Department',
+                    icon: Icons.business_outlined,
+                    color: Colors.green.shade700, // Green
+                    onTap: () {
+                       Navigator.of(context).push(MaterialPageRoute(builder: (context) => const DepartmentSelectionPage()));
+                    },
+                  ),
+                  _buildListTile(
+                    title: 'Manage Subjects',
+                    icon: Icons.library_books_outlined,
+                    color: Colors.lightGreen.shade800, // Green
+                    onTap: () {
+                       Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ManageSubjectsScreen()));
+                    },
+                  ),
+                  _buildListTile(
+                    title: 'Generate Timetable',
+                    icon: Icons.schedule_outlined,
+                    color: Colors.purple.shade700,
+                    onTap: () {
+                       Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ManageTimetableScreen()));
+                    },
+                    isLast: true,
+                  ),
+                ]),
+
+                const SizedBox(height: 24),
+
+                // Section 3: Communication
+                _buildSectionTitle('Communication'),
+                _buildGroupedCard([
+                  _buildListTile(
+                    title: 'Post Announcements',
+                    icon: Icons.campaign_outlined,
+                    color: Colors.green.shade600, // Changed from lightBlue
+                    onTap: () {
+                       Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ManageEventsScreen()));
+                    },
+                  ),
+                  _buildListTile(
+                    title: 'View Reports',
+                    icon: Icons.bar_chart_outlined,
+                    color: Colors.red.shade700,
+                    onTap: () {
+                       // Placeholder for View Reports
+                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reports feature coming soon!')));
+                    },
+                    isLast: true,
+                  ),
+                ]),
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2E7D32), Color(0xFF43A047)], // Green 800 to Green 600
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2E7D32).withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AdminCard(
-            title: 'Manage Student',
-            icon: Icons.group,
-            color: Colors.blue.shade700,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const BranchSelectionScreen()),
-              );
-            },
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Welcome, Admin',
+                style: GoogleFonts.lato(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const Icon(Icons.admin_panel_settings, color: Colors.white70, size: 30),
+            ],
           ),
-          AdminCard(
-            title: 'Manage Faculty',
-            icon: Icons.person,
-            color: Colors.green.shade700,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ManageFacultyScreen()),
-              );
-            },
-          ),
-          AdminCard(
-            title: 'Manage Course',
-            icon: Icons.book,
-            color: Colors.purple.shade700,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const DepartmentSelectionPage()),
-              );
-            },
-          ),
-          AdminCard(
-            title: 'Post Notice',
-            icon: Icons.campaign,
-            color: Colors.orange.shade700,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const PostNoticeScreen()),
-              );
-            },
-          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildMetricItem('1,250', 'Students'),
+              Container(width: 1, height: 40, color: Colors.white24, margin: const EdgeInsets.symmetric(horizontal: 20)),
+              _buildMetricItem('85', 'Faculty'),
+            ],
+          )
         ],
       ),
     );
   }
-}
 
-class AdminCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
+  Widget _buildMetricItem(String count, String label) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(count,
+          style: GoogleFonts.lato(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.lato(
+            fontSize: 14,
+            color: Colors.white70,
+          ),
+        ),
+      ],
+    );
+  }
 
-  const AdminCard({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 12),
+      child: Text(
+        title,
+        style: GoogleFonts.lato(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey.shade800,
+        ),
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+  Widget _buildGroupedCard(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildListTile({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    bool isLast = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: isLast
+            ? const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              )
+            : null,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: color.withOpacity(0.1),
-                child: Icon(icon, size: 30, color: color),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.lato(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, color: Colors.grey),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
             ],
           ),
         ),
