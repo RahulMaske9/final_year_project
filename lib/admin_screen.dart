@@ -7,6 +7,7 @@ import 'package:first_app/manage_subjects_screen.dart';
 import 'package:first_app/enroll_students_screen.dart';
 import 'package:first_app/broadcast_announcements_screen.dart';
 import 'package:first_app/manage_events_screen.dart';
+import 'package:first_app/department_selection_page.dart';
 import 'package:first_app/button_styles.dart';
 
 class AdminScreen extends StatelessWidget {
@@ -34,7 +35,12 @@ class AdminScreen extends StatelessWidget {
             context,
             title: 'Academic Structure',
             icon: Icons.school_outlined,
-            actions: ['Manage Courses', 'Manage Subjects', 'Enroll Students'],
+            actions: [
+              'Manage Courses',
+              'Select Department',
+              'Manage Subjects',
+              'Enroll Students'
+            ],
           ),
           const SizedBox(height: 16),
           _buildFeatureCard(
@@ -96,6 +102,11 @@ class AdminScreen extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const ManageCoursesScreen()),
+          );
+        } else if (action == 'Select Department') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const DepartmentSelectionPage()),
           );
         } else if (action == 'Manage Subjects') {
           Navigator.push(

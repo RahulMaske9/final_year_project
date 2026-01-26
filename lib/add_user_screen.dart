@@ -20,8 +20,6 @@ class _AddUserScreenState extends State<AddUserScreen> {
 
   final List<String> _roles = ['Student', 'Faculty', 'Parent', 'Admin'];
 
-
-  
   @override
   void dispose() {
     _emailController.dispose();

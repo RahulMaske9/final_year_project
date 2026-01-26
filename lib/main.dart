@@ -22,7 +22,7 @@ class CollegeManagementApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF3F51B5), // Indigo
           brightness: Brightness.light,
-          primary: const Color(0xFF3F51B5), // Indigo
+          primary: const Color(0xFF273C9A), // Indigo
           secondary: const Color(0xFFFFC107), // Amber
           surface: const Color(0xFFF5F7FA), // Light Grey
           onPrimary: Colors.white,
